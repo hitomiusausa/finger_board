@@ -6,6 +6,7 @@
 
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import '../models/page_data.dart';
 
 /// .mun デコード済み JSON → PageData への変換結果
@@ -125,6 +126,21 @@ class MunImportService {
           jsonDecode(jsonStr) as Map<String, dynamic>;
 
       final filename = File(jsonFilePath).uri.pathSegments.last;
+      return importFromJson(jsonData, filename: filename);
+    } catch (e) {
+      return MunImportResult.error('読み込みエラー: $e');
+    }
+  }
+
+  /// バイト列（Uint8List）から JSON を読み込んで PageData を生成する（Web 対応）
+  static MunImportResult importFromBytes(
+    Uint8List bytes, {
+    String? filename,
+  }) {
+    try {
+      final jsonStr = utf8.decode(bytes);
+      final Map<String, dynamic> jsonData =
+          jsonDecode(jsonStr) as Map<String, dynamic>;
       return importFromJson(jsonData, filename: filename);
     } catch (e) {
       return MunImportResult.error('読み込みエラー: $e');

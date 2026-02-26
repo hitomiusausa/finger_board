@@ -1,7 +1,10 @@
 // lib/features/board/screens/home_screen.dart
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:file_picker/file_picker.dart';
 import '../providers/board_provider.dart';
+import '../providers/mun_import_provider.dart';
 import '../../../shared/services/mun_import_service.dart';
 import '../../materials/providers/materials_provider.dart';
 import 'board_screen.dart';
@@ -18,6 +21,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // .mun インポートの結果を監視
+    ref.listen(munImportProvider, (_, next) {
+      next.whenData((result) {
+        if (result == null) return;
+        if (!result.success || result.pages.isEmpty) {
+          _showError(result.errorMessage ?? 'インポート失敗');
+          return;
+        }
+        ref.read(boardProvider.notifier).loadPage(result.pages.first.toJson());
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const BoardScreen()),
+          );
+        }
+      });
+      if (next.hasError) {
+        _showError(next.error.toString());
+      }
+    });
+
     // 教材作成の結果を監視
     ref.listen(createMaterialProvider, (_, next) {
       next.whenData((material) {
@@ -122,6 +146,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               subtitle: '既存の Finger Board 教材をインポート',
               onTap: _importMunFile,
             ),
+            const SizedBox(height: 16),
+            _actionCard(
+              icon: Icons.science,
+              color: const Color(0xFFF59E0B),
+              title: 'デモデータで試す',
+              subtitle: 'ファイル不要・すぐにボードを体験',
+              onTap: _loadDemo,
+            ),
 
             const SizedBox(height: 40),
             // バージョン情報
@@ -209,25 +241,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<void> _importMunFile() async {
-    // ファイルピッカーは Phase 1.5 で実装予定
-    // 現在はデモ JSON ファイルのパスを固定で読み込む
-    const demoJsonPath =
-        '/Users/usausagi/Dropbox/Semiosis共有 (2)/010 個人/くが/claud/mun_output/page/main/main.json';
+    final picked = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['mun', 'json'],
+      withData: true, // Web でも bytes を取得するために必要
+    );
+    if (picked == null || picked.files.isEmpty) return;
 
-    setState(() => _isLoading = true);
-    final result = await MunImportService.importFromJsonFile(demoJsonPath);
-    setState(() => _isLoading = false);
+    final file = picked.files.single;
+    final notifier = ref.read(munImportProvider.notifier);
 
-    if (!result.success || result.pages.isEmpty) {
-      _showError(result.errorMessage ?? 'インポート失敗');
-      return;
-    }
-    ref.read(boardProvider.notifier).loadPage(result.pages.first.toJson());
-    if (mounted) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const BoardScreen()),
-      );
+    // Web: bytes で受け取る / Native: path で受け取る
+    if (kIsWeb || file.path == null) {
+      if (file.bytes == null) {
+        _showError('ファイルデータを取得できませんでした');
+        return;
+      }
+      await notifier.importFromBytes(file.bytes!, file.name);
+    } else {
+      await notifier.importFromPath(file.path!);
     }
   }
 

@@ -1,275 +1,174 @@
 // lib/features/board/screens/home_screen.dart
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:file_picker/file_picker.dart';
-import '../providers/board_provider.dart';
-import '../providers/mun_import_provider.dart';
-import '../../../shared/services/mun_import_service.dart';
+import 'package:go_router/go_router.dart';
+import '../../../core/supabase/supabase_client.dart';
+import '../../../core/router/app_router.dart';
 import '../../materials/providers/materials_provider.dart';
-import 'board_screen.dart';
+import '../../materials/models/teaching_material.dart';
 
-class HomeScreen extends ConsumerStatefulWidget {
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
-  ConsumerState<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends ConsumerState<HomeScreen> {
-  bool _isLoading = false;
-
-  @override
-  Widget build(BuildContext context) {
-    // .mun インポートの結果を監視
-    ref.listen(munImportProvider, (_, next) {
-      next.whenData((result) {
-        if (result == null) return;
-        if (!result.success || result.pages.isEmpty) {
-          _showError(result.errorMessage ?? 'インポート失敗');
-          return;
-        }
-        ref.read(boardProvider.notifier).loadPage(result.pages.first.toJson());
-        if (mounted) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const BoardScreen()),
-          );
-        }
-      });
-      if (next.hasError) {
-        _showError(next.error.toString());
-      }
-    });
-
-    // 教材作成の結果を監視
-    ref.listen(createMaterialProvider, (_, next) {
-      next.whenData((material) {
-        if (material == null) return;
-        ref.read(currentMaterialProvider.notifier).state = material;
-        ref.read(boardProvider.notifier).loadPage({
-          'pageTitle': '新しいページ',
-          'objectsData': [],
-        });
-        if (mounted) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const BoardScreen()),
-          );
-        }
-      });
-      if (next.hasError) {
-        _showError(next.error.toString());
-      }
-    });
+  Widget build(BuildContext context, WidgetRef ref) {
+    final materialsAsync = ref.watch(materialsProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FF),
       appBar: AppBar(
-        title: const Text('Finger Board', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: const Color(0xFF4A90E2),
-        foregroundColor: Colors.white,
-        elevation: 0,
+        title: const Text('Finger Board'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'ログアウト',
+            onPressed: () async {
+              await supabase.auth.signOut();
+            },
+          ),
+        ],
       ),
-      body: _isLoading
-          ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('データを読み込み中...'),
-                ],
-              ),
-            )
-          : _buildBody(context),
-    );
-  }
-
-  Widget _buildBody(BuildContext context) {
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // ロゴ
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: const Color(0xFF4A90E2),
-                borderRadius: BorderRadius.circular(30),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF4A90E2).withValues(alpha: 0.4),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: const Icon(Icons.touch_app, size: 64, color: Colors.white),
-            ),
-            const SizedBox(height: 32),
-            const Text(
-              'Finger Board',
-              style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Color(0xFF2D3748)),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '特別支援教育向けインタラクティブ教材',
-              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 56),
-
-            // ── アクションカード ──────────────────────────
-            _actionCard(
-              icon: Icons.play_circle_fill,
-              color: const Color(0xFF10B981),
-              title: 'デモを体験する',
-              subtitle: 'サンプル教材でキャンバスを試す',
-              onTap: _loadDemo,
-            ),
-            const SizedBox(height: 16),
-            _actionCard(
-              icon: Icons.add_circle,
-              color: const Color(0xFF4A90E2),
-              title: '新しい教材を作成',
-              subtitle: '空のキャンバスから始める',
-              onTap: _createNewPage,
-            ),
-            const SizedBox(height: 16),
-            _actionCard(
-              icon: Icons.file_upload,
-              color: const Color(0xFF8B5CF6),
-              title: '.mun ファイルを読み込む',
-              subtitle: '既存の Finger Board 教材をインポート',
-              onTap: _importMunFile,
-            ),
-            const SizedBox(height: 16),
-            _actionCard(
-              icon: Icons.science,
-              color: const Color(0xFFF59E0B),
-              title: 'デモデータで試す',
-              subtitle: 'ファイル不要・すぐにボードを体験',
-              onTap: _loadDemo,
-            ),
-
-            const SizedBox(height: 40),
-            // バージョン情報
-            Text(
-              'Flutter 3.19.6 • Phase 1 MVP',
-              style: TextStyle(color: Colors.grey[400], fontSize: 12),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _actionCard({
-    required IconData icon,
-    required Color color,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      elevation: 2,
-      shadowColor: color.withValues(alpha: 0.2),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(
+      body: materialsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(icon, color: color, size: 28),
+              Text('エラー: $e'),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => ref.read(materialsProvider.notifier).refresh(),
+                child: const Text('再試行'),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 4),
-                    Text(subtitle, style: TextStyle(fontSize: 13, color: Colors.grey[500])),
-                  ],
-                ),
-              ),
-              Icon(Icons.chevron_right, color: Colors.grey[400]),
             ],
           ),
         ),
+        data: (materials) => materials.isEmpty
+            ? const _EmptyState()
+            : RefreshIndicator(
+                onRefresh: () => ref.read(materialsProvider.notifier).refresh(),
+                child: ListView.separated(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: materials.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) =>
+                      _MaterialCard(material: materials[index]),
+                ),
+              ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        icon: const Icon(Icons.add),
+        label: const Text('新しい教材'),
+        onPressed: () => _showCreateDialog(context, ref),
       ),
     );
   }
 
-  // ── アクション ─────────────────────────────────────────────
-
-  Future<void> _loadDemo() async {
-    setState(() => _isLoading = true);
-    final result = MunImportService.importDemo();
-    setState(() => _isLoading = false);
-
-    if (!result.success || result.pages.isEmpty) {
-      _showError(result.errorMessage ?? '不明なエラー');
-      return;
-    }
-    ref.read(boardProvider.notifier).loadPage(
-      result.pages.first.toJson(),
+  void _showCreateDialog(BuildContext context, WidgetRef ref) {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('教材を作成'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: '教材のタイトル',
+            border: OutlineInputBorder(),
+          ),
+          onSubmitted: (_) => _create(ctx, ref, controller.text),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('キャンセル'),
+          ),
+          FilledButton(
+            onPressed: () => _create(ctx, ref, controller.text),
+            child: const Text('作成'),
+          ),
+        ],
+      ),
     );
-    if (mounted) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const BoardScreen()),
-      );
-    }
   }
 
-  Future<void> _createNewPage() async {
-    ref.read(createMaterialProvider.notifier).create('新しい教材');
-  }
+  Future<void> _create(BuildContext ctx, WidgetRef ref, String title) async {
+    if (title.trim().isEmpty) return;
+    Navigator.pop(ctx);
 
-  Future<void> _importMunFile() async {
-    final picked = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['mun', 'json'],
-      withData: true, // Web でも bytes を取得するために必要
+    final notifier = ref.read(createMaterialProvider.notifier);
+    await notifier.create(title.trim());
+
+    final result = ref.read(createMaterialProvider);
+    result.whenOrNull(
+      data: (material) {
+        if (material != null) {
+          ref.read(materialsProvider.notifier).refresh();
+          ref.read(currentMaterialProvider.notifier).state = material;
+          // ctxではなくrouterを直接使う
+          ref.read(routerProvider).push('/board/${material.id}');
+        }
+      },
+      error: (e, _) {
+        ScaffoldMessenger.of(ctx).showSnackBar(
+          SnackBar(
+            content: Text('作成失敗: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      },
     );
-    if (picked == null || picked.files.isEmpty) return;
+  }
+}
 
-    final file = picked.files.single;
-    final notifier = ref.read(munImportProvider.notifier);
+class _MaterialCard extends ConsumerWidget {
+  final TeachingMaterial material;
+  const _MaterialCard({required this.material});
 
-    // Web: bytes で受け取る / Native: path で受け取る
-    if (kIsWeb || file.path == null) {
-      if (file.bytes == null) {
-        _showError('ファイルデータを取得できませんでした');
-        return;
-      }
-      await notifier.importFromBytes(file.bytes!, file.name);
-    } else {
-      await notifier.importFromPath(file.path!);
-    }
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Card(
+      child: ListTile(
+        leading: const Icon(Icons.book, size: 36),
+        title: Text(
+          material.title,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Text(
+          '更新: ${_formatDate(material.updatedAt)}',
+          style: const TextStyle(fontSize: 12),
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () {
+          ref.read(currentMaterialProvider.notifier).state = material;
+          context.push('/board/${material.id}');
+        },
+      ),
+    );
   }
 
-  void _showError(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-        behavior: SnackBarBehavior.floating,
+  String _formatDate(DateTime dt) {
+    return '${dt.year}/${dt.month.toString().padLeft(2, '0')}/${dt.day.toString().padLeft(2, '0')}';
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.book_outlined, size: 80, color: Colors.grey),
+          SizedBox(height: 16),
+          Text('教材がまだありません',
+              style: TextStyle(fontSize: 18, color: Colors.grey)),
+          SizedBox(height: 8),
+          Text('右下のボタンで最初の教材を作りましょう！',
+              style: TextStyle(color: Colors.grey)),
+        ],
       ),
     );
   }

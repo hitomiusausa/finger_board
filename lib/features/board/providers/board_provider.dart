@@ -6,6 +6,7 @@
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 import '../models/board_object.dart';
 import '../../../shared/models/page_data.dart';
 import '../models/undo_command.dart';
@@ -148,22 +149,33 @@ class BoardNotifier extends StateNotifier<BoardState> {
       canRedo: _undoManager.canRedo,
     );
   }
+
+  /// 空のページを初期化する（新規教材用）
+  void initEmptyPage(String title) {
+    _undoManager.reset();
+    state = state.copyWith(
+      currentPage: PageData(
+        id: _generateUuid(),
+        pageTitle: title,
+        objectsData: const [],
+      ),
+      selectedObjectIds: [],
+      canUndo: false,
+      canRedo: false,
+    );
+  }
+
+  /// ページをクリアする（画面遷移前のリセット用）
+  void clearPage() {
+    _undoManager.reset();
+    state = const BoardState();
+  }
+
+  String _generateUuid() => const Uuid().v4();
 }
 
-// ── Provider 定義 ───────────────────────────────────────────
-final boardProvider = StateNotifierProvider<BoardNotifier, BoardState>(
-  (ref) => BoardNotifier(),
-);
-
-// ── セレクター（パフォーマンス最適化） ──────────────────────
-final currentPageProvider = Provider<PageData?>(
-  (ref) => ref.watch(boardProvider).currentPage,
-);
-
-final appModeProvider = Provider<AppMode>(
-  (ref) => ref.watch(boardProvider).mode,
-);
-
-final selectedObjectIdsProvider = Provider<List<String>>(
-  (ref) => ref.watch(boardProvider).selectedObjectIds,
+// ── Provider 定義（family: materialId ごとに独立した状態）────
+final boardProvider =
+    StateNotifierProvider.family<BoardNotifier, BoardState, String>(
+  (ref, materialId) => BoardNotifier(),
 );

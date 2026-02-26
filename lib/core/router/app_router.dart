@@ -66,6 +66,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const SignupScreen(),
       ),
       GoRoute(
+        path: '/board/:materialId',
+        builder: (_, state) => BoardScreen(
+          materialId: state.pathParameters['materialId']!,
+        ),
+      ),
+      GoRoute(
         path: '/board',
         builder: (_, __) => const BoardScreen(),
       ),

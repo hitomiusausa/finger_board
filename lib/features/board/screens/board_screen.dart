@@ -1,44 +1,77 @@
 // lib/features/board/screens/board_screen.dart
-// ─────────────────────────────────────────────────────────────
-// ボードスクリーン — FreeBoard.as に対応するメイン画面
-// ─────────────────────────────────────────────────────────────
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 import '../providers/board_provider.dart';
 import '../models/board_object.dart';
 import '../widgets/board_canvas.dart';
+import '../../materials/providers/materials_provider.dart';
 
-class BoardScreen extends ConsumerWidget {
-  const BoardScreen({super.key});
+class BoardScreen extends ConsumerStatefulWidget {
+  final String? materialId;
+  const BoardScreen({super.key, this.materialId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final boardState = ref.watch(boardProvider);
+  ConsumerState<BoardScreen> createState() => _BoardScreenState();
+}
+
+class _BoardScreenState extends ConsumerState<BoardScreen> {
+  String get _materialId => widget.materialId ?? '';
+
+  @override
+  void initState() {
+    super.initState();
+    _initBoardIfNeeded();
+  }
+
+  void _initBoardIfNeeded() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final currentPage = ref.read(boardProvider(_materialId)).currentPage;
+      if (currentPage != null) return; // 既に初期化済み
+
+      final currentMaterial = ref.read(currentMaterialProvider);
+      final title = currentMaterial?.title ?? '';
+      ref.read(boardProvider(_materialId).notifier).initEmptyPage(title);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final boardState = ref.watch(boardProvider(_materialId));
     final page = boardState.currentPage;
     final mode = boardState.mode;
+    final currentMaterial = ref.watch(currentMaterialProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(page?.pageTitle.isEmpty == true ? '無題のページ' : page?.pageTitle ?? ''),
+        title: Text(
+          page?.pageTitle.isEmpty == true
+              ? '無題のページ'
+              : page?.pageTitle ?? '',
+        ),
         actions: [
-          // Undo ボタン
           IconButton(
             icon: const Icon(Icons.undo),
             tooltip: '元に戻す',
             onPressed: boardState.canUndo
-                ? () => ref.read(boardProvider.notifier).undo()
+                ? () => ref.read(boardProvider(_materialId).notifier).undo()
                 : null,
           ),
-          // Redo ボタン
           IconButton(
             icon: const Icon(Icons.redo),
             tooltip: 'やり直し',
             onPressed: boardState.canRedo
-                ? () => ref.read(boardProvider.notifier).redo()
+                ? () => ref.read(boardProvider(_materialId).notifier).redo()
                 : null,
           ),
-          // モード切替
+          // 保存ボタン（教材が選択されているときのみ表示）
+          if (currentMaterial != null)
+            IconButton(
+              icon: const Icon(Icons.save),
+              tooltip: '保存',
+              onPressed: () => _save(currentMaterial.id),
+            ),
           PopupMenuButton<AppMode>(
             icon: Icon(mode == AppMode.teacherEdit
                 ? Icons.edit
@@ -46,19 +79,32 @@ class BoardScreen extends ConsumerWidget {
                     ? Icons.school
                     : Icons.slideshow),
             tooltip: 'モード切替',
-            onSelected: (m) => ref.read(boardProvider.notifier).setMode(m),
-            itemBuilder: (_) => [
-              const PopupMenuItem(
+            onSelected: (m) =>
+                ref.read(boardProvider(_materialId).notifier).setMode(m),
+            itemBuilder: (_) => const [
+              PopupMenuItem(
                 value: AppMode.teacherEdit,
-                child: Row(children: [Icon(Icons.edit), SizedBox(width: 8), Text('教師編集モード')]),
+                child: Row(children: [
+                  Icon(Icons.edit),
+                  SizedBox(width: 8),
+                  Text('教師編集モード'),
+                ]),
               ),
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: AppMode.studentPlay,
-                child: Row(children: [Icon(Icons.school), SizedBox(width: 8), Text('生徒学習モード')]),
+                child: Row(children: [
+                  Icon(Icons.school),
+                  SizedBox(width: 8),
+                  Text('生徒学習モード'),
+                ]),
               ),
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: AppMode.presentation,
-                child: Row(children: [Icon(Icons.slideshow), SizedBox(width: 8), Text('発表モード')]),
+                child: Row(children: [
+                  Icon(Icons.slideshow),
+                  SizedBox(width: 8),
+                  Text('発表モード'),
+                ]),
               ),
             ],
           ),
@@ -70,23 +116,56 @@ class BoardScreen extends ConsumerWidget {
               page: page,
               mode: mode,
               onObjectMoved: (id, x, y) {
-                ref.read(boardProvider.notifier).moveObject(id, x, y);
+                ref
+                    .read(boardProvider(_materialId).notifier)
+                    .moveObject(id, x, y);
               },
               onObjectSelected: (id) {
-                ref.read(boardProvider.notifier).selectObject(id);
+                ref
+                    .read(boardProvider(_materialId).notifier)
+                    .selectObject(id);
               },
             ),
-      // 教師編集モード時だけ FAB を表示
       floatingActionButton: mode == AppMode.teacherEdit
           ? FloatingActionButton(
               child: const Icon(Icons.add),
-              onPressed: () => _showAddObjectMenu(context, ref),
+              onPressed: () => _showAddObjectMenu(),
             )
           : null,
     );
   }
 
-  void _showAddObjectMenu(BuildContext context, WidgetRef ref) {
+  Future<void> _save(String materialId) async {
+    final page = ref.read(boardProvider(_materialId)).currentPage;
+    if (page == null) return;
+
+    try {
+      await ref.read(materialsServiceProvider).savePage(
+            materialId: materialId,
+            pageOrder: 0,
+            pageData: page,
+          );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('保存しました'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('保存失敗: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showAddObjectMenu() {
     showModalBottomSheet(
       context: context,
       builder: (_) => SafeArea(
@@ -95,31 +174,36 @@ class BoardScreen extends ConsumerWidget {
           children: [
             const Padding(
               padding: EdgeInsets.all(16),
-              child: Text('オブジェクトを追加', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              child: Text('オブジェクトを追加',
+                  style:
+                      TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             ),
-            _addTile(context, ref, Icons.text_fields, 'テキストボックス', 'LetterBox'),
-            _addTile(context, ref, Icons.image, '画像ボックス', 'ImgBox'),
-            _addTile(context, ref, Icons.quiz, '問題ボックス', 'QuestionBox'),
+            _addTile(Icons.text_fields, 'テキストボックス', 'LetterBox'),
+            _addTile(Icons.image, '画像ボックス', 'ImgBox'),
+            _addTile(Icons.quiz, '問題ボックス', 'QuestionBox'),
           ],
         ),
       ),
     );
   }
 
-  Widget _addTile(BuildContext context, WidgetRef ref, IconData icon, String label, String className) {
+  Widget _addTile(IconData icon, String label, String className) {
     return ListTile(
       leading: Icon(icon),
       title: Text(label),
       onTap: () {
+        if (!mounted) return;
         Navigator.pop(context);
-        // テンプレートオブジェクトを追加
         final newObj = BoardObject(
-          id: 'obj_${DateTime.now().millisecondsSinceEpoch}',
+          id: const Uuid().v4(),
           className: className,
-          x: 100, y: 100, width: 200, height: 100,
+          x: 100,
+          y: 100,
+          width: 200,
+          height: 100,
           extra: className == 'LetterBox' ? {'text': 'テキスト'} : {},
         );
-        ref.read(boardProvider.notifier).addObject(newObj);
+        ref.read(boardProvider(_materialId).notifier).addObject(newObj);
       },
     );
   }

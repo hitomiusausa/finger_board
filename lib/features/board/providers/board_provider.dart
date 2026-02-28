@@ -23,29 +23,41 @@ enum AppMode {
 // ── ボードの状態 ────────────────────────────────────────────
 @immutable
 class BoardState {
-  final PageData? currentPage;
-  final List<String> selectedObjectIds;  // 選択中オブジェクトID
+  final List<PageData> pages;            // 全ページのリスト
+  final int currentPageIndex;            // 現在表示中のページインデックス
+  final List<String> selectedObjectIds; // 選択中オブジェクトID
   final AppMode mode;
   final bool canUndo;
   final bool canRedo;
 
   const BoardState({
-    this.currentPage,
+    this.pages = const [],
+    this.currentPageIndex = 0,
     this.selectedObjectIds = const [],
     this.mode = AppMode.teacherEdit,
     this.canUndo = false,
     this.canRedo = false,
   });
 
+  /// 現在表示中のページを取得
+  PageData? get currentPage {
+    if (pages.isEmpty || currentPageIndex < 0 || currentPageIndex >= pages.length) {
+      return null;
+    }
+    return pages[currentPageIndex];
+  }
+
   BoardState copyWith({
-    PageData? currentPage,
+    List<PageData>? pages,
+    int? currentPageIndex,
     List<String>? selectedObjectIds,
     AppMode? mode,
     bool? canUndo,
     bool? canRedo,
   }) =>
       BoardState(
-        currentPage: currentPage ?? this.currentPage,
+        pages: pages ?? this.pages,
+        currentPageIndex: currentPageIndex ?? this.currentPageIndex,
         selectedObjectIds: selectedObjectIds ?? this.selectedObjectIds,
         mode: mode ?? this.mode,
         canUndo: canUndo ?? this.canUndo,
@@ -65,7 +77,8 @@ class BoardNotifier extends StateNotifier<BoardState> {
     final page = PageData.fromMunJson(munJson);
     _undoManager.reset();
     state = state.copyWith(
-      currentPage: page,
+      pages: [page],
+      currentPageIndex: 0,
       selectedObjectIds: [],
       canUndo: false,
       canRedo: false,
@@ -88,8 +101,13 @@ class BoardNotifier extends StateNotifier<BoardState> {
       toX: newX, toY: newY,
     );
     final newPage = _undoManager.execute(cmd, page);
+    
+    // 現在のページを新しいページに置き換え
+    final newPages = List<PageData>.from(state.pages);
+    newPages[state.currentPageIndex] = newPage;
+    
     state = state.copyWith(
-      currentPage: newPage,
+      pages: newPages,
       canUndo: _undoManager.canUndo,
       canRedo: _undoManager.canRedo,
     );
@@ -101,8 +119,11 @@ class BoardNotifier extends StateNotifier<BoardState> {
     if (page == null || !_undoManager.canUndo) return;
     final newPage = _undoManager.undo(page);
     if (newPage != null) {
+      final newPages = List<PageData>.from(state.pages);
+      newPages[state.currentPageIndex] = newPage;
+      
       state = state.copyWith(
-        currentPage: newPage,
+        pages: newPages,
         canUndo: _undoManager.canUndo,
         canRedo: _undoManager.canRedo,
       );
@@ -115,8 +136,11 @@ class BoardNotifier extends StateNotifier<BoardState> {
     if (page == null || !_undoManager.canRedo) return;
     final newPage = _undoManager.redo(page);
     if (newPage != null) {
+      final newPages = List<PageData>.from(state.pages);
+      newPages[state.currentPageIndex] = newPage;
+      
       state = state.copyWith(
-        currentPage: newPage,
+        pages: newPages,
         canUndo: _undoManager.canUndo,
         canRedo: _undoManager.canRedo,
       );
@@ -146,8 +170,12 @@ class BoardNotifier extends StateNotifier<BoardState> {
       object: obj,
     );
     final newPage = _undoManager.execute(cmd, page);
+    
+    final newPages = List<PageData>.from(state.pages);
+    newPages[state.currentPageIndex] = newPage;
+    
     state = state.copyWith(
-      currentPage: newPage,
+      pages: newPages,
       canUndo: _undoManager.canUndo,
       canRedo: _undoManager.canRedo,
     );
@@ -159,10 +187,11 @@ class BoardNotifier extends StateNotifier<BoardState> {
       final pages = await _materialsService.getPages(materialId);
       
       if (pages.isNotEmpty) {
-        // 最初のページを表示
+        // 全ページを読み込み、最初のページを表示
         _undoManager.reset();
         state = state.copyWith(
-          currentPage: pages.first,
+          pages: pages,
+          currentPageIndex: 0,
           selectedObjectIds: [],
           canUndo: false,
           canRedo: false,
@@ -181,12 +210,14 @@ class BoardNotifier extends StateNotifier<BoardState> {
   /// 空のページを初期化する（新規教材用）
   void initEmptyPage(String title) {
     _undoManager.reset();
+    final emptyPage = PageData(
+      id: _generateUuid(),
+      pageTitle: 'ページ 1',
+      objectsData: const [],
+    );
     state = state.copyWith(
-      currentPage: PageData(
-        id: _generateUuid(),
-        pageTitle: '',  // ページタイトルは空文字、教材タイトルはAppBarで表示
-        objectsData: const [],
-      ),
+      pages: [emptyPage],
+      currentPageIndex: 0,
       selectedObjectIds: [],
       canUndo: false,
       canRedo: false,
@@ -197,6 +228,62 @@ class BoardNotifier extends StateNotifier<BoardState> {
   void clearPage() {
     _undoManager.reset();
     state = const BoardState();
+  }
+
+  /// ページを切り替える
+  void setCurrentPageIndex(int index) {
+    if (index >= 0 && index < state.pages.length) {
+      _undoManager.reset(); // ページ切り替え時はUndoをリセット
+      state = state.copyWith(
+        currentPageIndex: index,
+        selectedObjectIds: [],
+        canUndo: false,
+        canRedo: false,
+      );
+    }
+  }
+
+  /// 新しいページを追加
+  void addPage() {
+    final newPage = PageData(
+      id: _generateUuid(),
+      pageTitle: 'ページ ${state.pages.length + 1}',
+      objectsData: const [],
+    );
+    final newPages = List<PageData>.from(state.pages);
+    newPages.add(newPage);
+    
+    state = state.copyWith(
+      pages: newPages,
+      currentPageIndex: newPages.length - 1, // 新しいページに切り替え
+      selectedObjectIds: [],
+    );
+  }
+
+  /// ページを削除
+  void deletePage(int index) {
+    if (state.pages.length <= 1) return; // 最低1ページは残す
+    if (index < 0 || index >= state.pages.length) return;
+
+    final newPages = List<PageData>.from(state.pages);
+    newPages.removeAt(index);
+    
+    // 現在のページインデックスを調整
+    int newIndex = state.currentPageIndex;
+    if (index <= state.currentPageIndex && state.currentPageIndex > 0) {
+      newIndex = state.currentPageIndex - 1;
+    } else if (state.currentPageIndex >= newPages.length) {
+      newIndex = newPages.length - 1;
+    }
+
+    _undoManager.reset();
+    state = state.copyWith(
+      pages: newPages,
+      currentPageIndex: newIndex,
+      selectedObjectIds: [],
+      canUndo: false,
+      canRedo: false,
+    );
   }
 
   String _generateUuid() => const Uuid().v4();

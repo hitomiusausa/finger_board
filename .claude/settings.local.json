@@ -9,7 +9,9 @@
       "Bash(timeout 120 flutter run:*)",
       "Bash(flutter analyze:*)",
       "Bash(git:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(gh pr:*)",
+      "Bash(gh issue:*)"
     ]
   }
 }

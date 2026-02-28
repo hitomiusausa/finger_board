@@ -87,4 +87,33 @@ class MaterialsService {
         .update({'title': newTitle})
         .eq('id', materialId);
   }
+
+  /// 全ページを一括保存（既存ページは削除してから保存）
+  Future<void> saveAllPages({
+    required String materialId,
+    required List<PageData> pages,
+  }) async {
+    // 既存のページをすべて削除
+    await _client
+        .from('pages')
+        .delete()
+        .eq('material_id', materialId);
+
+    // 新しいページをすべて挿入
+    final insertData = pages.asMap().entries.map((entry) {
+      final index = entry.key;
+      final page = entry.value;
+      return {
+        'id': page.id,
+        'material_id': materialId,
+        'page_order': index,
+        'title': page.pageTitle,
+        'objects': page.toJson(),
+      };
+    }).toList();
+
+    if (insertData.isNotEmpty) {
+      await _client.from('pages').insert(insertData);
+    }
+  }
 }

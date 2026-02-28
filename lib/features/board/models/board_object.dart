@@ -116,7 +116,7 @@ class BoardObject {
         : const RemoteSwitchSettings();
 
     return BoardObject(
-      id: json['objectCode']?.toString() ?? UniqueKey().toString(),
+      id: json['id'] as String? ?? json['objectCode']?.toString() ?? UniqueKey().toString(),
       className: json['className'] as String? ?? 'Unknown',
       x: (json['x'] as num?)?.toDouble() ?? 0,
       y: (json['y'] as num?)?.toDouble() ?? 0,
@@ -146,6 +146,7 @@ class BoardObject {
   }
 
   Map<String, dynamic> toJson() => {
+        'id': id,
         'className': className,
         'x': x, 'y': y, 'W': width, 'H': height,
         'scaleX': scaleX, 'scaleY': scaleY, 'angle': angle,

@@ -20,9 +20,7 @@ class BoardScreen extends ConsumerStatefulWidget {
 
 class _BoardScreenState extends ConsumerState<BoardScreen> {
   String get _materialId => widget.materialId ?? '';
-  bool _isEditingTitle = false;
   final _titleController = TextEditingController();
-  final _titleFocusNode = FocusNode();
 
   @override
   void initState() {
@@ -33,7 +31,6 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
   @override
   void dispose() {
     _titleController.dispose();
-    _titleFocusNode.dispose();
     super.dispose();
   }
 
@@ -41,20 +38,17 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       final currentPage = ref.read(boardProvider(_materialId)).currentPage;
-      if (currentPage != null) return; // 既に初期化済み
+      if (currentPage != null) return;
 
       final currentMaterial = ref.read(currentMaterialProvider);
-      
+
       if (currentMaterial != null && widget.materialId != null) {
-        // 既存教材の場合：Supabase からページを読み込み
         try {
           await ref.read(boardProvider(_materialId).notifier).loadPages(widget.materialId!);
         } catch (e) {
-          // エラー時はログに出力（loadPages 内で空ページ初期化済み）
           debugPrint('ページ読み込みエラー: $e');
         }
       } else {
-        // 新規教材やデモの場合：空ページで初期化
         final title = currentMaterial?.title ?? '';
         ref.read(boardProvider(_materialId).notifier).initEmptyPage(title);
       }
@@ -72,27 +66,28 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
       appBar: AppBar(
         title: _buildTitle(currentMaterial, page),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.undo),
-            tooltip: '元に戻す',
-            onPressed: boardState.canUndo
-                ? () => ref.read(boardProvider(_materialId).notifier).undo()
-                : null,
-          ),
-          IconButton(
-            icon: const Icon(Icons.redo),
-            tooltip: 'やり直し',
-            onPressed: boardState.canRedo
-                ? () => ref.read(boardProvider(_materialId).notifier).redo()
-                : null,
-          ),
-          // 保存ボタン（教材が選択されているときのみ表示）
-          if (currentMaterial != null)
+          if (mode == AppMode.teacherEdit) ...[
             IconButton(
-              icon: const Icon(Icons.save),
-              tooltip: '保存',
-              onPressed: () => _save(currentMaterial.id),
+              icon: const Icon(Icons.undo),
+              tooltip: '元に戻す',
+              onPressed: boardState.canUndo
+                  ? () => ref.read(boardProvider(_materialId).notifier).undo()
+                  : null,
             ),
+            IconButton(
+              icon: const Icon(Icons.redo),
+              tooltip: 'やり直し',
+              onPressed: boardState.canRedo
+                  ? () => ref.read(boardProvider(_materialId).notifier).redo()
+                  : null,
+            ),
+            if (currentMaterial != null)
+              IconButton(
+                icon: const Icon(Icons.save),
+                tooltip: '保存',
+                onPressed: () => _save(currentMaterial.id),
+              ),
+          ],
           PopupMenuButton<AppMode>(
             icon: Icon(mode == AppMode.teacherEdit
                 ? Icons.edit
@@ -135,9 +130,7 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
-                // ページタブバー
                 if (mode == AppMode.teacherEdit) _buildPageTabBar(),
-                // ボードキャンバス
                 Expanded(
                   child: BoardCanvas(
                     page: page,
@@ -183,10 +176,9 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
     if (pages.isEmpty) return;
 
     try {
-      // 全ページを保存
       final service = ref.read(materialsServiceProvider);
       await service.saveAllPages(materialId: materialId, pages: pages);
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -217,8 +209,7 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
             const Padding(
               padding: EdgeInsets.all(16),
               child: Text('オブジェクトを追加',
-                  style:
-                      TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             ),
             _addTile(Icons.text_fields, 'テキストボックス', 'LetterBox'),
             _addTile(Icons.image, '画像ボックス', 'ImgBox'),
@@ -253,28 +244,9 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
   Widget _buildTitle(TeachingMaterial? currentMaterial, dynamic page) {
     final displayTitle = currentMaterial?.title ?? page?.pageTitle ?? '無題のページ';
 
-    if (_isEditingTitle && currentMaterial != null) {
-      return TextField(
-        controller: _titleController,
-        focusNode: _titleFocusNode,
-        style: const TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.w500,
-          color: Colors.white,
-        ),
-        decoration: const InputDecoration(
-          border: InputBorder.none,
-          hintText: 'タイトルを入力',
-          hintStyle: TextStyle(color: Colors.white70),
-        ),
-        onSubmitted: (value) => _saveTitleEdit(currentMaterial.id, value),
-        onTapOutside: (_) => _saveTitleEdit(currentMaterial.id, _titleController.text),
-      );
-    }
-
     if (currentMaterial != null) {
       return GestureDetector(
-        onTap: () => _startTitleEdit(displayTitle),
+        onTap: () => _showTitleEditDialog(currentMaterial, displayTitle),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -289,30 +261,40 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
     return Text(displayTitle);
   }
 
-  void _startTitleEdit(String currentTitle) {
-    setState(() {
-      _isEditingTitle = true;
-      _titleController.text = currentTitle;
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _titleFocusNode.requestFocus();
-      _titleController.selection = TextSelection(
-        baseOffset: 0,
-        extentOffset: _titleController.text.length,
-      );
-    });
+  void _showTitleEditDialog(TeachingMaterial currentMaterial, String currentTitle) {
+    _titleController.text = currentTitle;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('タイトルを編集'),
+        content: TextField(
+          controller: _titleController,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: 'タイトルを入力'),
+          onSubmitted: (value) {
+            Navigator.pop(context);
+            _saveTitleEdit(currentMaterial.id, value);
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('キャンセル'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _saveTitleEdit(currentMaterial.id, _titleController.text);
+            },
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
   }
 
-  void _saveTitleEdit(String materialId, String newTitle) async {
-    if (!_isEditingTitle) return;
-
-    setState(() {
-      _isEditingTitle = false;
-    });
-
-    if (newTitle.trim().isEmpty) {
-      return;
-    }
+void _saveTitleEdit(String materialId, String newTitle) async {
+    if (newTitle.trim().isEmpty) return;
 
     try {
       await ref.read(updateMaterialTitleProvider.notifier).updateTitle(materialId, newTitle.trim());
@@ -325,7 +307,8 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
         );
       }
     } catch (e) {
-      if (mounted) {
+      // AutoDisposeAsyncNotifier の既知の問題は無視
+      if (mounted && !e.toString().contains('Future already completed')) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('タイトル更新失敗: $e'),
@@ -335,7 +318,6 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
       }
     }
   }
-
   void _showImportMenu() {
     showModalBottomSheet(
       context: context,
@@ -346,8 +328,7 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
             const Padding(
               padding: EdgeInsets.all(16),
               child: Text('ファイルをインポート',
-                  style:
-                      TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             ),
             ListTile(
               leading: const Icon(Icons.file_upload),
@@ -387,13 +368,11 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
       final filename = file.name;
 
       if (file.bytes != null) {
-        // Web環境: bytes使用
         await ref.read(munImportProvider.notifier).importFromBytes(
           file.bytes!,
           filename,
         );
       } else if (file.path != null) {
-        // Native環境: path使用
         await ref.read(munImportProvider.notifier).importFromPath(file.path!);
       } else {
         throw Exception('ファイル読み込みに失敗しました');

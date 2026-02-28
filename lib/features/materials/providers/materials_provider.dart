@@ -58,3 +58,30 @@ class CreateMaterialNotifier
     );
   }
 }
+
+// ── 教材タイトル更新アクション ────────────────────────────────────
+final updateMaterialTitleProvider =
+    AutoDisposeAsyncNotifierProvider<UpdateMaterialTitleNotifier, void>(
+  UpdateMaterialTitleNotifier.new,
+);
+
+class UpdateMaterialTitleNotifier extends AutoDisposeAsyncNotifier<void> {
+  @override
+  FutureOr<void> build() {}
+
+  Future<void> updateTitle(String materialId, String newTitle) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      await ref.read(materialsServiceProvider).updateMaterialTitle(materialId, newTitle);
+      
+      // 現在の教材が更新対象と同じなら、currentMaterialProviderも更新
+      final currentMaterial = ref.read(currentMaterialProvider);
+      if (currentMaterial?.id == materialId) {
+        ref.read(currentMaterialProvider.notifier).state = currentMaterial?.copyWith(title: newTitle);
+      }
+      
+      // 教材一覧も更新
+      ref.read(materialsProvider.notifier).refresh();
+    });
+  }
+}

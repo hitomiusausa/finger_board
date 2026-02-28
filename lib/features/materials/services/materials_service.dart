@@ -70,7 +70,13 @@ class MaterialsService {
     return (response as List).map((e) {
       final row = e as Map<String, dynamic>;
       final objects = row['objects'] as Map<String, dynamic>? ?? {};
-      return PageData.fromJson(objects);
+      
+      // ページレベルのメタデータ（id, title）を復元
+      final pageData = PageData.fromJson(objects);
+      return pageData.copyWith(
+        id: row['id'] as String? ?? pageData.id,
+        pageTitle: row['title'] as String? ?? pageData.pageTitle,
+      );
     }).toList();
   }
 }

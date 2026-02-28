@@ -122,39 +122,49 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
       ),
       body: page == null
           ? const Center(child: CircularProgressIndicator())
-          : BoardCanvas(
-              page: page,
-              mode: mode,
-              onObjectMoved: (id, x, y) {
-                ref
-                    .read(boardProvider(_materialId).notifier)
-                    .moveObject(id, x, y);
-              },
-              onObjectSelected: (id) {
-                ref
-                    .read(boardProvider(_materialId).notifier)
-                    .selectObject(id);
-              },
+          : Column(
+              children: [
+                // ページタブバー
+                if (mode == AppMode.teacherEdit) _buildPageTabBar(),
+                // ボードキャンバス
+                Expanded(
+                  child: BoardCanvas(
+                    page: page,
+                    mode: mode,
+                    onObjectMoved: (id, x, y) {
+                      ref
+                          .read(boardProvider(_materialId).notifier)
+                          .moveObject(id, x, y);
+                    },
+                    onObjectSelected: (id) {
+                      ref
+                          .read(boardProvider(_materialId).notifier)
+                          .selectObject(id);
+                    },
+                  ),
+                ),
+              ],
             ),
       floatingActionButton: mode == AppMode.teacherEdit
           ? FloatingActionButton(
               child: const Icon(Icons.add),
               onPressed: () => _showAddObjectMenu(),
+              tooltip: 'オブジェクト追加',
             )
           : null,
     );
   }
 
   Future<void> _save(String materialId) async {
-    final page = ref.read(boardProvider(_materialId)).currentPage;
-    if (page == null) return;
+    final boardState = ref.read(boardProvider(_materialId));
+    final pages = boardState.pages;
+    if (pages.isEmpty) return;
 
     try {
-      await ref.read(materialsServiceProvider).savePage(
-            materialId: materialId,
-            pageOrder: 0,
-            pageData: page,
-          );
+      // 全ページを保存
+      final service = ref.read(materialsServiceProvider);
+      await service.saveAllPages(materialId: materialId, pages: pages);
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -215,6 +225,89 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
         );
         ref.read(boardProvider(_materialId).notifier).addObject(newObj);
       },
+    );
+  }
+
+  Widget _buildPageTabBar() {
+    final boardState = ref.watch(boardProvider(_materialId));
+    final pages = boardState.pages;
+    final currentIndex = boardState.currentPageIndex;
+
+    return Container(
+      height: 50,
+      color: Theme.of(context).primaryColor.withOpacity(0.1),
+      child: Row(
+        children: [
+          // ページタブ
+          Expanded(
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: pages.length,
+              itemBuilder: (context, index) {
+                final isSelected = index == currentIndex;
+                return GestureDetector(
+                  onTap: () {
+                    ref.read(boardProvider(_materialId).notifier)
+                        .setCurrentPageIndex(index);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 8),
+                    margin: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: isSelected 
+                          ? Theme.of(context).primaryColor
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: Theme.of(context).primaryColor,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          pages[index].pageTitle.isEmpty
+                              ? 'ページ ${index + 1}'
+                              : pages[index].pageTitle,
+                          style: TextStyle(
+                            color: isSelected ? Colors.white : null,
+                            fontWeight: isSelected 
+                                ? FontWeight.bold 
+                                : FontWeight.normal,
+                          ),
+                        ),
+                        if (pages.length > 1) ..[
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: () {
+                              ref.read(boardProvider(_materialId).notifier)
+                                  .deletePage(index);
+                            },
+                            child: Icon(
+                              Icons.close,
+                              size: 16,
+                              color: isSelected ? Colors.white : null,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          // ページ追加ボタン
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: () {
+              ref.read(boardProvider(_materialId).notifier).addPage();
+            },
+            tooltip: 'ページ追加',
+          ),
+        ],
+      ),
     );
   }
 }

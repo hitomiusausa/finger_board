@@ -58,9 +58,7 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          page?.pageTitle.isEmpty == true
-              ? '無題のページ'
-              : page?.pageTitle ?? '',
+          currentMaterial?.title ?? page?.pageTitle ?? '無題のページ',
         ),
         actions: [
           IconButton(

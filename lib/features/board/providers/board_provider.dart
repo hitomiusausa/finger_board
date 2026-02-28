@@ -183,7 +183,7 @@ class BoardNotifier extends StateNotifier<BoardState> {
     state = state.copyWith(
       currentPage: PageData(
         id: _generateUuid(),
-        pageTitle: title,
+        pageTitle: '',  // ページタイトルは空文字、教材タイトルはAppBarで表示
         objectsData: const [],
       ),
       selectedObjectIds: [],

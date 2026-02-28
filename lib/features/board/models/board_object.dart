@@ -116,7 +116,7 @@ class BoardObject {
         : const RemoteSwitchSettings();
 
     return BoardObject(
-      id: json['id'] as String? ?? json['objectCode']?.toString() ?? UniqueKey().toString(),
+      id: json['id'] as String? ?? UniqueKey().toString(),
       className: json['className'] as String? ?? 'Unknown',
       x: (json['x'] as num?)?.toDouble() ?? 0,
       y: (json['y'] as num?)?.toDouble() ?? 0,

@@ -10,6 +10,7 @@ import 'package:uuid/uuid.dart';
 import '../models/board_object.dart';
 import '../../../shared/models/page_data.dart';
 import '../models/undo_command.dart';
+import '../../materials/services/materials_service.dart';
 
 // ── アプリモード ────────────────────────────────────────────
 enum AppMode {
@@ -54,8 +55,9 @@ class BoardState {
 // ── Board Provider（状態ノーティファイア）──────────────────
 class BoardNotifier extends StateNotifier<BoardState> {
   final UndoManager _undoManager = UndoManager();
+  final MaterialsService _materialsService;
 
-  BoardNotifier() : super(const BoardState());
+  BoardNotifier(this._materialsService) : super(const BoardState());
 
   /// ページを読み込む（.mun JSON から）
   void loadPage(Map<String, dynamic> munJson) {
@@ -150,6 +152,31 @@ class BoardNotifier extends StateNotifier<BoardState> {
     );
   }
 
+  /// Supabase から教材のページを読み込む
+  Future<void> loadPages(String materialId) async {
+    try {
+      final pages = await _materialsService.getPages(materialId);
+      
+      if (pages.isNotEmpty) {
+        // 最初のページを表示
+        _undoManager.reset();
+        state = state.copyWith(
+          currentPage: pages.first,
+          selectedObjectIds: [],
+          canUndo: false,
+          canRedo: false,
+        );
+      } else {
+        // ページがない場合は空ページを初期化
+        initEmptyPage('');
+      }
+    } catch (e) {
+      // エラー時は空ページで初期化
+      initEmptyPage('');
+      rethrow;
+    }
+  }
+
   /// 空のページを初期化する（新規教材用）
   void initEmptyPage(String title) {
     _undoManager.reset();
@@ -177,5 +204,8 @@ class BoardNotifier extends StateNotifier<BoardState> {
 // ── Provider 定義（family: materialId ごとに独立した状態）────
 final boardProvider =
     StateNotifierProvider.family<BoardNotifier, BoardState, String>(
-  (ref, materialId) => BoardNotifier(),
+  (ref, materialId) {
+    final materialsService = ref.watch(materialsServiceProvider);
+    return BoardNotifier(materialsService);
+  },
 );

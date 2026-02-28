@@ -25,14 +25,26 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
   }
 
   void _initBoardIfNeeded() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       final currentPage = ref.read(boardProvider(_materialId)).currentPage;
       if (currentPage != null) return; // 既に初期化済み
 
       final currentMaterial = ref.read(currentMaterialProvider);
-      final title = currentMaterial?.title ?? '';
-      ref.read(boardProvider(_materialId).notifier).initEmptyPage(title);
+      
+      if (currentMaterial != null && widget.materialId != null) {
+        // 既存教材の場合：Supabase からページを読み込み
+        try {
+          await ref.read(boardProvider(_materialId).notifier).loadPages(widget.materialId!);
+        } catch (e) {
+          // エラー時はログに出力（loadPages 内で空ページ初期化済み）
+          debugPrint('ページ読み込みエラー: $e');
+        }
+      } else {
+        // 新規教材やデモの場合：空ページで初期化
+        final title = currentMaterial?.title ?? '';
+        ref.read(boardProvider(_materialId).notifier).initEmptyPage(title);
+      }
     });
   }
 

@@ -116,7 +116,11 @@ class BoardObject {
         : const RemoteSwitchSettings();
 
     return BoardObject(
+<<<<<<< HEAD
       id: json['id'] as String? ?? UniqueKey().toString(),
+=======
+      id: json['id'] as String? ?? 'obj_${json['x']}_${json['y']}_${json['className']}',
+>>>>>>> b32c24b (バグ修正: Duplicate keys・タイトル表示・新規教材作成)
       className: json['className'] as String? ?? 'Unknown',
       x: (json['x'] as num?)?.toDouble() ?? 0,
       y: (json['y'] as num?)?.toDouble() ?? 0,

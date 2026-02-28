@@ -11,6 +11,7 @@ import '../models/board_object.dart';
 import '../../../shared/models/page_data.dart';
 import '../models/undo_command.dart';
 import '../../materials/services/materials_service.dart';
+import '../../materials/providers/materials_provider.dart';
 
 // ── アプリモード ────────────────────────────────────────────
 enum AppMode {

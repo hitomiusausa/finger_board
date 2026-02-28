@@ -48,4 +48,25 @@ class TeachingMaterial {
         'created_at': createdAt.toIso8601String(),
         'updated_at': updatedAt.toIso8601String(),
       };
+
+  TeachingMaterial copyWith({
+    String? id,
+    String? ownerId,
+    String? title,
+    String? description,
+    bool? isPublic,
+    String? forkedFrom,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) =>
+      TeachingMaterial(
+        id: id ?? this.id,
+        ownerId: ownerId ?? this.ownerId,
+        title: title ?? this.title,
+        description: description ?? this.description,
+        isPublic: isPublic ?? this.isPublic,
+        forkedFrom: forkedFrom ?? this.forkedFrom,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
 }

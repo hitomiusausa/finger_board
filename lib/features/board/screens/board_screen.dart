@@ -6,6 +6,7 @@ import '../providers/board_provider.dart';
 import '../models/board_object.dart';
 import '../widgets/board_canvas.dart';
 import '../../materials/providers/materials_provider.dart';
+import '../../materials/models/teaching_material.dart';
 
 class BoardScreen extends ConsumerStatefulWidget {
   final String? materialId;
@@ -17,11 +18,21 @@ class BoardScreen extends ConsumerStatefulWidget {
 
 class _BoardScreenState extends ConsumerState<BoardScreen> {
   String get _materialId => widget.materialId ?? '';
+  bool _isEditingTitle = false;
+  final _titleController = TextEditingController();
+  final _titleFocusNode = FocusNode();
 
   @override
   void initState() {
     super.initState();
     _initBoardIfNeeded();
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _titleFocusNode.dispose();
+    super.dispose();
   }
 
   void _initBoardIfNeeded() {
@@ -57,9 +68,7 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          currentMaterial?.title ?? page?.pageTitle ?? '無題のページ',
-        ),
+        title: _buildTitle(currentMaterial, page),
         actions: [
           IconButton(
             icon: const Icon(Icons.undo),
@@ -216,5 +225,91 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
         ref.read(boardProvider(_materialId).notifier).addObject(newObj);
       },
     );
+  }
+
+  Widget _buildTitle(TeachingMaterial? currentMaterial, dynamic page) {
+    final displayTitle = currentMaterial?.title ?? page?.pageTitle ?? '無題のページ';
+
+    if (_isEditingTitle && currentMaterial != null) {
+      return TextField(
+        controller: _titleController,
+        focusNode: _titleFocusNode,
+        style: const TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.w500,
+          color: Colors.white,
+        ),
+        decoration: const InputDecoration(
+          border: InputBorder.none,
+          hintText: 'タイトルを入力',
+          hintStyle: TextStyle(color: Colors.white70),
+        ),
+        onSubmitted: (value) => _saveTitleEdit(currentMaterial.id, value),
+        onTapOutside: (_) => _saveTitleEdit(currentMaterial.id, _titleController.text),
+      );
+    }
+
+    if (currentMaterial != null) {
+      return GestureDetector(
+        onTap: () => _startTitleEdit(displayTitle),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(displayTitle),
+            const SizedBox(width: 8),
+            const Icon(Icons.edit, size: 18, color: Colors.white70),
+          ],
+        ),
+      );
+    }
+
+    return Text(displayTitle);
+  }
+
+  void _startTitleEdit(String currentTitle) {
+    setState(() {
+      _isEditingTitle = true;
+      _titleController.text = currentTitle;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _titleFocusNode.requestFocus();
+      _titleController.selection = TextSelection(
+        baseOffset: 0,
+        extentOffset: _titleController.text.length,
+      );
+    });
+  }
+
+  void _saveTitleEdit(String materialId, String newTitle) async {
+    if (!_isEditingTitle) return;
+    
+    setState(() {
+      _isEditingTitle = false;
+    });
+
+    if (newTitle.trim().isEmpty) {
+      return;
+    }
+
+    try {
+      await ref.read(updateMaterialTitleProvider.notifier).updateTitle(materialId, newTitle.trim());
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('タイトルを更新しました'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('タイトル更新失敗: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }

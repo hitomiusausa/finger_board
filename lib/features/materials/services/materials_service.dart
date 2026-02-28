@@ -73,4 +73,12 @@ class MaterialsService {
       return PageData.fromJson(objects);
     }).toList();
   }
+
+  /// 教材タイトルを更新
+  Future<void> updateMaterialTitle(String materialId, String newTitle) async {
+    await _client
+        .from('materials')
+        .update({'title': newTitle})
+        .eq('id', materialId);
+  }
 }

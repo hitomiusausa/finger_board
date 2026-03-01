@@ -55,8 +55,16 @@ class BoardRepository {
   }
 
   Future<BoardPage> createBoardPage(BoardPage page) async {
-    final response = await _supabase.from('board_pages').insert(page.toJson()).select().single();
-    return BoardPage.fromJson(response);
+    debugPrint('=== createPage called === boardId: ${page.boardId}');
+    debugPrint('Current user: ${Supabase.instance.client.auth.currentUser?.id}');
+
+    try {
+      final response = await _supabase.from('board_pages').insert(page.toJson()).select().single();
+      return BoardPage.fromJson(response);
+    } catch (e) {
+      debugPrint('Create Page Error: $e');
+      rethrow;
+    }
   }
 
   Future<BoardPage> updateBoardPage(BoardPage page) async {

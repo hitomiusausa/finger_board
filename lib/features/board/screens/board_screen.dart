@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 import '../providers/board_provider.dart';
 import '../data/models/board_object.dart';
@@ -88,6 +89,10 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/'),
+        ),
         title: _buildTitle(page),
         actions: _buildAppBarActions(mode, boardState),
       ),
@@ -242,13 +247,43 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
           children: [
              ListTile(
               leading: const Icon(Icons.text_fields),
-              title: const Text('テキストボックス'),
-              onTap: () => _addObject('LetterBox', {'text': 'テキスト'}),
+              title: const Text('LetterBox（文字）'),
+              onTap: () {
+                Navigator.pop(context);
+                _addObject('LetterBox', {'text': 'テキスト'});
+              },
             ),
             ListTile(
               leading: const Icon(Icons.image),
-              title: const Text('画像ボックス'),
-              onTap: () => _addObject('ImgBox', {}),
+              title: const Text('ImgBox（画像）'),
+              onTap: () {
+                Navigator.pop(context);
+                _addObject('ImgBox', {});
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.extension),
+              title: const Text('AssembleBox（組み合わせ）'),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('近日対応予定')));
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.help_outline),
+              title: const Text('QBox（問題）'),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('近日対応予定')));
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.show_chart),
+              title: const Text('Line（線）'),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('近日対応予定')));
+              },
             ),
           ],
         ),
@@ -258,7 +293,6 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
 
   void _addObject(String className, Map<String, dynamic> extras) {
     if (!mounted) return;
-    Navigator.pop(context);
     final newObj = BoardObject(
       id: const Uuid().v4(),
       boardId: _boardId,

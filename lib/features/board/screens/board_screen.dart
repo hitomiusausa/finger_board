@@ -50,7 +50,7 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
       List<PageData> loadedPages = [];
       final objRepo = BoardObjectRepository();
       for (final bp in boardPages) {
-        final objects = await objRepo.getBoardObjects(_boardId, bp.pageIndex);
+        final objects = await objRepo.getBoardObjects(bp.id);
         loadedPages.add(PageData(
            id: bp.id,
            pageTitle: 'ページ ${bp.pageIndex}',
@@ -211,9 +211,9 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
         // Need to delete old objects on this page first? Or just ignore for now in Phase 1
         for (final o in p.objectsData) {
           try {
-             await objRepo.createBoardObject(o.copyWith(boardId: _boardId, pageIndex: i));
+             await objRepo.createBoardObject(o.copyWith(pageId: pId, pageIndex: i));
           } catch (_) {
-             await objRepo.updateBoardObject(o.copyWith(boardId: _boardId, pageIndex: i));
+             await objRepo.updateBoardObject(o.copyWith(pageId: pId, pageIndex: i));
           }
         }
       }
@@ -293,9 +293,10 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
 
   void _addObject(String className, Map<String, dynamic> extras) {
     if (!mounted) return;
+    var currentPageId = ref.read(boardProvider(_boardId)).currentPage?.id ?? '';
     final newObj = BoardObject(
       id: const Uuid().v4(),
-      boardId: _boardId,
+      pageId: currentPageId,
       pageIndex: ref.read(boardProvider(_boardId)).currentPageIndex,
       className: className,
       x: 100,

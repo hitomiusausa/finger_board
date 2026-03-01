@@ -2,7 +2,7 @@ import 'package:equatable/equatable.dart';
 
 class BoardObject extends Equatable {
   final String id;
-  final String boardId;
+  final String pageId;
   final int pageIndex;
   final String className; // 'AssembleBox', 'ImgBox', 'QBox'
   final double x;
@@ -18,7 +18,7 @@ class BoardObject extends Equatable {
 
   const BoardObject({
     required this.id,
-    required this.boardId,
+    required this.pageId,
     required this.pageIndex,
     required this.className,
     this.x = 0.0,
@@ -36,7 +36,7 @@ class BoardObject extends Equatable {
   factory BoardObject.fromJson(Map<String, dynamic> json) {
     return BoardObject(
       id: json['id'] as String,
-      boardId: json['board_id'] as String,
+      pageId: json['page_id'] as String,
       pageIndex: json['page_index'] as int? ?? 0,
       className: json['class_name'] as String,
       x: (json['x'] as num?)?.toDouble() ?? 0.0,
@@ -57,7 +57,7 @@ class BoardObject extends Equatable {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'board_id': boardId,
+      'page_id': pageId,
       'page_index': pageIndex,
       'class_name': className,
       'x': x,
@@ -75,7 +75,7 @@ class BoardObject extends Equatable {
 
   BoardObject copyWith({
     String? id,
-    String? boardId,
+    String? pageId,
     int? pageIndex,
     String? className,
     double? x,
@@ -91,7 +91,7 @@ class BoardObject extends Equatable {
   }) {
     return BoardObject(
       id: id ?? this.id,
-      boardId: boardId ?? this.boardId,
+      pageId: pageId ?? this.pageId,
       pageIndex: pageIndex ?? this.pageIndex,
       className: className ?? this.className,
       x: x ?? this.x,
@@ -110,7 +110,7 @@ class BoardObject extends Equatable {
   @override
   List<Object?> get props => [
         id,
-        boardId,
+        pageId,
         pageIndex,
         className,
         x,

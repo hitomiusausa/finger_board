@@ -9,12 +9,11 @@ class BoardObjectRepository {
       : _supabase = supabase ?? Supabase.instance.client;
 
   // BoardObjects
-  Future<List<BoardObject>> getBoardObjects(String boardId, int pageIndex) async {
+  Future<List<BoardObject>> getBoardObjects(String pageId) async {
     final response = await _supabase
         .from('board_objects')
         .select()
-        .eq('board_id', boardId)
-        .eq('page_index', pageIndex)
+        .eq('page_id', pageId)
         .order('z_index');
     return response.map((json) => BoardObject.fromJson(json)).toList();
   }

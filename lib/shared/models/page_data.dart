@@ -4,7 +4,7 @@
 // AS3 の SavedPageData に対応
 // ─────────────────────────────────────────────────────────────
 
-import '../../features/board/models/board_object.dart';
+import '../../features/board/data/models/board_object.dart';
 
 /// ページ設定（旧 pageOptions）
 class PageOptions {

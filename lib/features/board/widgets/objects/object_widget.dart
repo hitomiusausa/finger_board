@@ -5,7 +5,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import 'package:flutter/material.dart';
-import '../../models/board_object.dart';
+import '../../data/models/board_object.dart';
 
 class ObjectWidget extends StatelessWidget {
   final BoardObject object;
@@ -32,7 +32,7 @@ class _LetterBoxWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = object.extra['text'] as String? ?? '';
+    final text = object.properties?['text'] as String? ?? '';
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -56,7 +56,7 @@ class _ImgBoxWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final imageUrl = object.extra['imageUrl'] as String?;
+    final imageUrl = object.properties?['imageUrl'] as String?;
     return Container(
       decoration: BoxDecoration(
         color: Colors.grey[200],
@@ -103,16 +103,8 @@ class _AssembleBoxWidget extends StatelessWidget {
         border: Border.all(color: Colors.green[300]!, width: 2),
         borderRadius: BorderRadius.circular(4),
       ),
-      child: Stack(
-        children: object.children
-            .map((child) => Positioned(
-                  left: child.x,
-                  top: child.y,
-                  width: child.width,
-                  height: child.height,
-                  child: ObjectWidget(object: child),
-                ))
-            .toList(),
+      child: const Stack(
+        children: [], // Phase 1: Not fully supporting children yet
       ),
     );
   }

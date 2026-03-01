@@ -7,17 +7,15 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
-import '../models/board_object.dart';
+import '../data/models/board_object.dart';
 import '../../../shared/models/page_data.dart';
 import '../models/undo_command.dart';
-import '../../materials/services/materials_service.dart';
-import '../../materials/providers/materials_provider.dart';
 
 // ── アプリモード ────────────────────────────────────────────
-enum AppMode {
-  teacherEdit,   // 教師編集モード（旧 editorsMode）
-  studentPlay,   // 生徒学習モード（旧 studentsVersion）
-  presentation,  // 発表モード
+enum BoardMode {
+  edit,
+  present,
+  study,
 }
 
 // ── ボードの状態 ────────────────────────────────────────────
@@ -26,7 +24,7 @@ class BoardState {
   final List<PageData> pages;            // 全ページのリスト
   final int currentPageIndex;            // 現在表示中のページインデックス
   final List<String> selectedObjectIds; // 選択中オブジェクトID
-  final AppMode mode;
+  final BoardMode mode;
   final bool canUndo;
   final bool canRedo;
 
@@ -34,7 +32,7 @@ class BoardState {
     this.pages = const [],
     this.currentPageIndex = 0,
     this.selectedObjectIds = const [],
-    this.mode = AppMode.teacherEdit,
+    this.mode = BoardMode.edit,
     this.canUndo = false,
     this.canRedo = false,
   });
@@ -51,7 +49,7 @@ class BoardState {
     List<PageData>? pages,
     int? currentPageIndex,
     List<String>? selectedObjectIds,
-    AppMode? mode,
+    BoardMode? mode,
     bool? canUndo,
     bool? canRedo,
   }) =>
@@ -68,9 +66,8 @@ class BoardState {
 // ── Board Provider（状態ノーティファイア）──────────────────
 class BoardNotifier extends StateNotifier<BoardState> {
   final UndoManager _undoManager = UndoManager();
-  final MaterialsService _materialsService;
 
-  BoardNotifier(this._materialsService) : super(const BoardState());
+  BoardNotifier() : super(const BoardState());
 
   /// ページを読み込む（.mun JSON から）
   void loadPage(Map<String, dynamic> munJson) {
@@ -156,8 +153,8 @@ class BoardNotifier extends StateNotifier<BoardState> {
     }
   }
 
-  /// アプリモード切り替え（旧 FB.editorsMode / studentsVersion）
-  void setMode(AppMode mode) {
+  /// モード切替
+  void changeMode(BoardMode mode) {
     state = state.copyWith(mode: mode, selectedObjectIds: []);
   }
 
@@ -181,29 +178,28 @@ class BoardNotifier extends StateNotifier<BoardState> {
     );
   }
 
-  /// Supabase から教材のページを読み込む
-  Future<void> loadPages(String materialId) async {
-    try {
-      final pages = await _materialsService.getPages(materialId);
-      
-      if (pages.isNotEmpty) {
-        // 全ページを読み込み、最初のページを表示
-        _undoManager.reset();
-        state = state.copyWith(
-          pages: pages,
-          currentPageIndex: 0,
-          selectedObjectIds: [],
-          canUndo: false,
-          canRedo: false,
-        );
-      } else {
-        // ページがない場合は空ページを初期化
-        initEmptyPage('');
-      }
-    } catch (e) {
-      // エラー時は空ページで初期化
-      initEmptyPage('');
-      rethrow;
+  /// ロードしたページデータを反映する
+  void setLoadedPages(List<PageData> pages) {
+    _undoManager.reset();
+    state = state.copyWith(
+      pages: pages,
+      currentPageIndex: 0,
+      selectedObjectIds: [],
+      canUndo: false,
+      canRedo: false,
+    );
+  }
+
+  /// ページ切り替え（switchPage）
+  void switchPage(int index) {
+    if (index >= 0 && index < state.pages.length) {
+      _undoManager.reset();
+      state = state.copyWith(
+        currentPageIndex: index,
+        selectedObjectIds: [],
+        canUndo: false,
+        canRedo: false,
+      );
     }
   }
 
@@ -293,7 +289,6 @@ class BoardNotifier extends StateNotifier<BoardState> {
 final boardProvider =
     StateNotifierProvider.family<BoardNotifier, BoardState, String>(
   (ref, materialId) {
-    final materialsService = ref.watch(materialsServiceProvider);
-    return BoardNotifier(materialsService);
+    return BoardNotifier();
   },
 );

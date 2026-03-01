@@ -2,17 +2,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:uuid/uuid.dart';
 import '../../../core/supabase/supabase_client.dart';
-import '../../../core/router/app_router.dart';
-import '../../materials/providers/materials_provider.dart';
-import '../../materials/models/teaching_material.dart';
+import '../data/repositories/board_repository.dart';
+import '../data/models/board.dart';
+
+final boardsProvider = FutureProvider.autoDispose<List<Board>>((ref) async {
+  return await BoardRepository().fetchBoards();
+});
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final materialsAsync = ref.watch(materialsProvider);
+    final boardsAsync = ref.watch(boardsProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -27,7 +31,7 @@ class HomeScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: materialsAsync.when(
+      body: boardsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
           child: Column(
@@ -36,22 +40,22 @@ class HomeScreen extends ConsumerWidget {
               Text('エラー: $e'),
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: () => ref.read(materialsProvider.notifier).refresh(),
+                onPressed: () => ref.invalidate(boardsProvider),
                 child: const Text('再試行'),
               ),
             ],
           ),
         ),
-        data: (materials) => materials.isEmpty
+        data: (boards) => boards.isEmpty
             ? const _EmptyState()
             : RefreshIndicator(
-                onRefresh: () => ref.read(materialsProvider.notifier).refresh(),
+                onRefresh: () async { ref.invalidate(boardsProvider); },
                 child: ListView.separated(
                   padding: const EdgeInsets.all(16),
-                  itemCount: materials.length,
+                  itemCount: boards.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 8),
                   itemBuilder: (context, index) =>
-                      _MaterialCard(material: materials[index]),
+                      _BoardCard(board: boards[index]),
                 ),
               ),
       ),
@@ -96,52 +100,51 @@ class HomeScreen extends ConsumerWidget {
     if (title.trim().isEmpty) return;
     Navigator.pop(ctx);
 
-    final notifier = ref.read(createMaterialProvider.notifier);
-    await notifier.create(title.trim());
-
-    final result = ref.read(createMaterialProvider);
-    result.whenOrNull(
-      data: (material) {
-        if (material != null) {
-          ref.read(materialsProvider.notifier).refresh();
-          ref.read(currentMaterialProvider.notifier).state = material;
-          // ctxではなくrouterを直接使う
-          ref.read(routerProvider).push('/board/${material.id}');
-        }
-      },
-      error: (e, _) {
+    try {
+      final newBoard = Board(
+        id: const Uuid().v4(),
+        title: title.trim(),
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      await BoardRepository().createBoard(newBoard);
+      ref.invalidate(boardsProvider);
+      if (ctx.mounted) {
+        ctx.go('/board/${newBoard.id}');
+      }
+    } catch (e) {
+      if (ctx.mounted) {
         ScaffoldMessenger.of(ctx).showSnackBar(
           SnackBar(
             content: Text('作成失敗: $e'),
             backgroundColor: Colors.red,
           ),
         );
-      },
-    );
+      }
+    }
   }
 }
 
-class _MaterialCard extends ConsumerWidget {
-  final TeachingMaterial material;
-  const _MaterialCard({required this.material});
+class _BoardCard extends ConsumerWidget {
+  final Board board;
+  const _BoardCard({required this.board});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Card(
       child: ListTile(
-        leading: const Icon(Icons.book, size: 36),
+        leading: const Icon(Icons.dashboard, size: 36),
         title: Text(
-          material.title,
+          board.title,
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: Text(
-          '更新: ${_formatDate(material.updatedAt)}',
+          '更新: ${_formatDate(board.updatedAt)}',
           style: const TextStyle(fontSize: 12),
         ),
         trailing: const Icon(Icons.chevron_right),
         onTap: () {
-          ref.read(currentMaterialProvider.notifier).state = material;
-          context.push('/board/${material.id}');
+          context.go('/board/${board.id}');
         },
       ),
     );
@@ -163,10 +166,10 @@ class _EmptyState extends StatelessWidget {
         children: [
           Icon(Icons.book_outlined, size: 80, color: Colors.grey),
           SizedBox(height: 16),
-          Text('教材がまだありません',
+          Text('ボードがまだありません',
               style: TextStyle(fontSize: 18, color: Colors.grey)),
           SizedBox(height: 8),
-          Text('右下のボタンで最初の教材を作りましょう！',
+          Text('右下のボタンで最初のボードを作りましょう！',
               style: TextStyle(color: Colors.grey)),
         ],
       ),

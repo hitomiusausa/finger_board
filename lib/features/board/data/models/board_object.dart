@@ -73,6 +73,40 @@ class BoardObject extends Equatable {
     };
   }
 
+  BoardObject copyWith({
+    String? id,
+    String? boardId,
+    int? pageIndex,
+    String? className,
+    double? x,
+    double? y,
+    double? width,
+    double? height,
+    double? rotation,
+    int? zIndex,
+    double? frameMargin,
+    double? frameRoundness,
+    List<String>? correctAnswers,
+    Map<String, dynamic>? properties,
+  }) {
+    return BoardObject(
+      id: id ?? this.id,
+      boardId: boardId ?? this.boardId,
+      pageIndex: pageIndex ?? this.pageIndex,
+      className: className ?? this.className,
+      x: x ?? this.x,
+      y: y ?? this.y,
+      width: width ?? this.width,
+      height: height ?? this.height,
+      rotation: rotation ?? this.rotation,
+      zIndex: zIndex ?? this.zIndex,
+      frameMargin: frameMargin ?? this.frameMargin,
+      frameRoundness: frameRoundness ?? this.frameRoundness,
+      correctAnswers: correctAnswers ?? this.correctAnswers,
+      properties: properties ?? this.properties,
+    );
+  }
+
   @override
   List<Object?> get props => [
         id,

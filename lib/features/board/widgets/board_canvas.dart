@@ -6,13 +6,13 @@
 
 import 'package:flutter/material.dart';
 import '../../../shared/models/page_data.dart';
-import '../models/board_object.dart';
+import '../data/models/board_object.dart';
 import '../providers/board_provider.dart';
 import 'objects/object_widget.dart';
 
 class BoardCanvas extends StatelessWidget {
   final PageData page;
-  final AppMode mode;
+  final BoardMode mode;
   final void Function(String id, double x, double y) onObjectMoved;
   final void Function(String? id) onObjectSelected;
 
@@ -38,17 +38,18 @@ class BoardCanvas extends StatelessWidget {
             : Stack(
                 children: page.objectsData
                     .where((obj) {
+                      final props = obj.properties ?? {};
                       // 非表示フラグの処理
-                      if (obj.hidden) return false;
+                      if (props['hidden'] == true) return false;
                       // 学習モードで blindMode のオブジェクトは非表示
-                      if (mode == AppMode.studentPlay && obj.blindMode) return false;
+                      if (mode == BoardMode.study && props['blindMode'] == true) return false;
                       return true;
                     })
                     .map((obj) => _DraggableObject(
                           key: ValueKey(obj.id),
                           object: obj,
-                          isDraggable: mode == AppMode.teacherEdit ||
-                              obj.studentsModeDragEnabled,
+                          isDraggable: mode == BoardMode.edit ||
+                              (obj.properties?['studentsModeDragEnabled'] == true),
                           onMoved: onObjectMoved,
                           onSelected: onObjectSelected,
                         ))
@@ -148,8 +149,8 @@ class _DraggableObjectState extends State<_DraggableObject> {
             ? (_) => widget.onMoved(obj.id, _x, _y)
             : null,
         child: SizedBox(
-          width: obj.width * obj.scaleX,
-          height: obj.height * obj.scaleY,
+          width: obj.width * ((obj.properties?['scaleX'] as num?)?.toDouble() ?? 1.0),
+          height: obj.height * ((obj.properties?['scaleY'] as num?)?.toDouble() ?? 1.0),
           child: ObjectWidget(object: obj),
         ),
       ),

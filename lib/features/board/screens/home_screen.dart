@@ -103,7 +103,7 @@ class HomeScreen extends ConsumerWidget {
     try {
       final newBoard = Board(
         id: const Uuid().v4(),
-        userId: supabase.auth.currentUser?.id,
+        ownerId: supabase.auth.currentUser?.id,
         title: title.trim(),
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),

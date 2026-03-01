@@ -2,14 +2,14 @@ import 'package:equatable/equatable.dart';
 
 class Board extends Equatable {
   final String id;
-  final String? userId;
+  final String? ownerId;
   final String title;
   final DateTime createdAt;
   final DateTime updatedAt;
 
   const Board({
     required this.id,
-    this.userId,
+    this.ownerId,
     required this.title,
     required this.createdAt,
     required this.updatedAt,
@@ -18,7 +18,7 @@ class Board extends Equatable {
   factory Board.fromJson(Map<String, dynamic> json) {
     return Board(
       id: json['id'] as String,
-      userId: json['user_id'] as String?,
+      ownerId: json['owner_id'] as String?,
       title: json['title'] as String? ?? 'Untitled',
       createdAt: json['created_at'] != null 
           ? DateTime.parse(json['created_at'] as String) 
@@ -32,7 +32,7 @@ class Board extends Equatable {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      if (userId != null) 'user_id': userId,
+      if (ownerId != null) 'owner_id': ownerId,
       'title': title,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
@@ -40,5 +40,5 @@ class Board extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, userId, title, createdAt, updatedAt];
+  List<Object?> get props => [id, ownerId, title, createdAt, updatedAt];
 }

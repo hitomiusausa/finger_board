@@ -59,7 +59,7 @@ class BoardRepository {
     debugPrint('Current user: ${Supabase.instance.client.auth.currentUser?.id}');
 
     try {
-      final response = await _supabase.from('board_pages').insert(page.toJson()).select().single();
+      final response = await _supabase.from('board_pages').upsert(page.toJson()).select().single();
       return BoardPage.fromJson(response);
     } catch (e) {
       debugPrint('Create Page Error: $e');

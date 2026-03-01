@@ -211,9 +211,9 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
         // Need to delete old objects on this page first? Or just ignore for now in Phase 1
         for (final o in p.objectsData) {
           try {
-             await objRepo.createBoardObject(o.copyWith(pageId: pId, pageIndex: i));
+             await objRepo.createBoardObject(o.copyWith(pageId: pId));
           } catch (_) {
-             await objRepo.updateBoardObject(o.copyWith(pageId: pId, pageIndex: i));
+             await objRepo.updateBoardObject(o.copyWith(pageId: pId));
           }
         }
       }
@@ -297,7 +297,6 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
     final newObj = BoardObject(
       id: const Uuid().v4(),
       pageId: currentPageId,
-      pageIndex: ref.read(boardProvider(_boardId)).currentPageIndex,
       className: className,
       x: 100,
       y: 100,
@@ -463,7 +462,7 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
                    boardId: _boardId,
                    pageIndex: pages.length,
                 ));
-                ref.read(boardProvider(_boardId).notifier).addPage();
+                ref.read(boardProvider(_boardId).notifier).addPage(newPageId);
               } catch (e) {
                  debugPrint('add page error $e');
               }

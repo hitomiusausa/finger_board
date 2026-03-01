@@ -240,9 +240,9 @@ class BoardNotifier extends StateNotifier<BoardState> {
   }
 
   /// 新しいページを追加
-  void addPage() {
+  void addPage([String? pageId]) {
     final newPage = PageData(
-      id: _generateUuid(),
+      id: pageId ?? _generateUuid(),
       pageTitle: 'ページ ${state.pages.length + 1}',
       objectsData: const [],
     );

@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 import '../models/board.dart';
 import '../models/board_page.dart';
 
@@ -20,8 +21,13 @@ class BoardRepository {
   }
 
   Future<Board> createBoard(Board board) async {
-    final response = await _supabase.from('boards').insert(board.toJson()).select().single();
-    return Board.fromJson(response);
+    try {
+      final response = await _supabase.from('boards').insert(board.toJson()).select().single();
+      return Board.fromJson(response);
+    } catch (e) {
+      debugPrint('Create Board Error: $e');
+      rethrow;
+    }
   }
 
   Future<Board> updateBoard(Board board) async {

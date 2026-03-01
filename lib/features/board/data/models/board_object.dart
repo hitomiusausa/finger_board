@@ -10,7 +10,6 @@ class BoardObject extends Equatable {
   final double width;
   final double height;
   final double rotation;
-  final int zIndex;
   final double? frameMargin;
   final double? frameRoundness;
   final List<String>? correctAnswers;
@@ -26,7 +25,6 @@ class BoardObject extends Equatable {
     this.width = 100.0,
     this.height = 100.0,
     this.rotation = 0.0,
-    this.zIndex = 0,
     this.frameMargin,
     this.frameRoundness,
     this.correctAnswers,
@@ -44,7 +42,6 @@ class BoardObject extends Equatable {
       width: (json['width'] as num?)?.toDouble() ?? 100.0,
       height: (json['height'] as num?)?.toDouble() ?? 100.0,
       rotation: (json['rotation'] as num?)?.toDouble() ?? 0.0,
-      zIndex: json['z_index'] as int? ?? 0,
       frameMargin: (json['frame_margin'] as num?)?.toDouble(),
       frameRoundness: (json['frame_roundness'] as num?)?.toDouble(),
       correctAnswers: json['correct_answers'] != null
@@ -65,7 +62,6 @@ class BoardObject extends Equatable {
       'width': width,
       'height': height,
       'rotation': rotation,
-      'z_index': zIndex,
       if (frameMargin != null) 'frame_margin': frameMargin,
       if (frameRoundness != null) 'frame_roundness': frameRoundness,
       if (correctAnswers != null) 'correct_answers': correctAnswers,
@@ -83,7 +79,6 @@ class BoardObject extends Equatable {
     double? width,
     double? height,
     double? rotation,
-    int? zIndex,
     double? frameMargin,
     double? frameRoundness,
     List<String>? correctAnswers,
@@ -99,7 +94,6 @@ class BoardObject extends Equatable {
       width: width ?? this.width,
       height: height ?? this.height,
       rotation: rotation ?? this.rotation,
-      zIndex: zIndex ?? this.zIndex,
       frameMargin: frameMargin ?? this.frameMargin,
       frameRoundness: frameRoundness ?? this.frameRoundness,
       correctAnswers: correctAnswers ?? this.correctAnswers,
@@ -118,7 +112,6 @@ class BoardObject extends Equatable {
         width,
         height,
         rotation,
-        zIndex,
         frameMargin,
         frameRoundness,
         correctAnswers,

@@ -13,8 +13,7 @@ class BoardObjectRepository {
     final response = await _supabase
         .from('board_objects')
         .select()
-        .eq('page_id', pageId)
-        .order('z_index');
+        .eq('page_id', pageId);
     return response.map((json) => BoardObject.fromJson(json)).toList();
   }
 

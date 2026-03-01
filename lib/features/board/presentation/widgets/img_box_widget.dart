@@ -62,21 +62,18 @@ class ImgBoxWidget extends StatelessWidget {
       top: boardObject.y,
       width: boardObject.width,
       height: boardObject.height,
-      child: Transform.rotate(
-        angle: boardObject.rotation,
-        child: Container(
-          decoration: BoxDecoration(
-             // 枠の設定などが必要な場合に備えて
-             // border: ...
-             borderRadius: boardObject.frameRoundness != null
-                  ? BorderRadius.circular(boardObject.frameRoundness!)
-                  : null,
-          ),
-          padding: boardObject.frameMargin != null
-              ? EdgeInsets.all(boardObject.frameMargin!)
-              : null,
-          child: imageWidget,
+      child: Container(
+        decoration: BoxDecoration(
+           // 枠の設定などが必要な場合に備えて
+           // border: ...
+           borderRadius: boardObject.frameRoundness != null
+                ? BorderRadius.circular(boardObject.frameRoundness!)
+                : null,
         ),
+        padding: boardObject.frameMargin != null
+            ? EdgeInsets.all(boardObject.frameMargin!)
+            : null,
+        child: imageWidget,
       ),
     );
   }

@@ -249,11 +249,14 @@ class BoardNotifier extends StateNotifier<BoardState> {
     final newPages = List<PageData>.from(state.pages);
     newPages.add(newPage);
     
+    debugPrint('=== board_provider: addPage called === new count will be ${newPages.length}');
+
     state = state.copyWith(
       pages: newPages,
       currentPageIndex: newPages.length - 1, // 新しいページに切り替え
       selectedObjectIds: [],
     );
+    debugPrint('=== board_provider: state updated === pages size: ${state.pages.length}');
   }
 
   /// ページを削除

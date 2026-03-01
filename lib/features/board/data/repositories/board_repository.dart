@@ -59,8 +59,8 @@ class BoardRepository {
     debugPrint('Current user: ${Supabase.instance.client.auth.currentUser?.id}');
 
     try {
-      final response = await _supabase.from('board_pages').upsert(page.toJson()).select().single();
-      return BoardPage.fromJson(response);
+      await _supabase.from('board_pages').upsert(page.toJson());
+      return page;
     } catch (e) {
       debugPrint('Create Page Error: $e');
       rethrow;
@@ -68,8 +68,8 @@ class BoardRepository {
   }
 
   Future<BoardPage> updateBoardPage(BoardPage page) async {
-    final response = await _supabase.from('board_pages').update(page.toJson()).eq('id', page.id).select().single();
-    return BoardPage.fromJson(response);
+    await _supabase.from('board_pages').update(page.toJson()).eq('id', page.id);
+    return page;
   }
 
   Future<void> deleteBoardPage(String id) async {

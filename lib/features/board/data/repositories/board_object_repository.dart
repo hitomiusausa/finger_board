@@ -23,13 +23,13 @@ class BoardObjectRepository {
   }
 
   Future<BoardObject> createBoardObject(BoardObject boardObject) async {
-    final response = await _supabase.from('board_objects').insert(boardObject.toJson()).select().single();
-    return BoardObject.fromJson(response);
+    await _supabase.from('board_objects').upsert(boardObject.toJson());
+    return boardObject;
   }
 
   Future<BoardObject> updateBoardObject(BoardObject boardObject) async {
-    final response = await _supabase.from('board_objects').update(boardObject.toJson()).eq('id', boardObject.id).select().single();
-    return BoardObject.fromJson(response);
+    await _supabase.from('board_objects').update(boardObject.toJson()).eq('id', boardObject.id);
+    return boardObject;
   }
 
   Future<void> deleteBoardObject(String id) async {
@@ -47,13 +47,13 @@ class BoardObjectRepository {
   }
 
   Future<BoardObjectChild> createBoardObjectChild(BoardObjectChild child) async {
-    final response = await _supabase.from('board_object_children').insert(child.toJson()).select().single();
-    return BoardObjectChild.fromJson(response);
+    await _supabase.from('board_object_children').upsert(child.toJson());
+    return child;
   }
 
   Future<BoardObjectChild> updateBoardObjectChild(BoardObjectChild child) async {
-    final response = await _supabase.from('board_object_children').update(child.toJson()).eq('id', child.id).select().single();
-    return BoardObjectChild.fromJson(response);
+    await _supabase.from('board_object_children').update(child.toJson()).eq('id', child.id);
+    return child;
   }
 
   Future<void> deleteBoardObjectChild(String id) async {

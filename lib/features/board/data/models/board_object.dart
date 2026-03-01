@@ -8,7 +8,6 @@ class BoardObject extends Equatable {
   final double y;
   final double width;
   final double height;
-  final double rotation;
   final double? frameMargin;
   final double? frameRoundness;
   final List<String>? correctAnswers;
@@ -22,7 +21,6 @@ class BoardObject extends Equatable {
     this.y = 0.0,
     this.width = 100.0,
     this.height = 100.0,
-    this.rotation = 0.0,
     this.frameMargin,
     this.frameRoundness,
     this.correctAnswers,
@@ -38,7 +36,6 @@ class BoardObject extends Equatable {
       y: (json['y'] as num?)?.toDouble() ?? 0.0,
       width: (json['width'] as num?)?.toDouble() ?? 100.0,
       height: (json['height'] as num?)?.toDouble() ?? 100.0,
-      rotation: (json['rotation'] as num?)?.toDouble() ?? 0.0,
       frameMargin: (json['frame_margin'] as num?)?.toDouble(),
       frameRoundness: (json['frame_roundness'] as num?)?.toDouble(),
       correctAnswers: json['correct_answers'] != null
@@ -57,7 +54,6 @@ class BoardObject extends Equatable {
       'y': y,
       'width': width,
       'height': height,
-      'rotation': rotation,
       if (frameMargin != null) 'frame_margin': frameMargin,
       if (frameRoundness != null) 'frame_roundness': frameRoundness,
       if (correctAnswers != null) 'correct_answers': correctAnswers,
@@ -73,7 +69,6 @@ class BoardObject extends Equatable {
     double? y,
     double? width,
     double? height,
-    double? rotation,
     double? frameMargin,
     double? frameRoundness,
     List<String>? correctAnswers,
@@ -87,7 +82,6 @@ class BoardObject extends Equatable {
       y: y ?? this.y,
       width: width ?? this.width,
       height: height ?? this.height,
-      rotation: rotation ?? this.rotation,
       frameMargin: frameMargin ?? this.frameMargin,
       frameRoundness: frameRoundness ?? this.frameRoundness,
       correctAnswers: correctAnswers ?? this.correctAnswers,
@@ -104,7 +98,6 @@ class BoardObject extends Equatable {
         y,
         width,
         height,
-        rotation,
         frameMargin,
         frameRoundness,
         correctAnswers,

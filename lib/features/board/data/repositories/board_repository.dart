@@ -21,6 +21,10 @@ class BoardRepository {
   }
 
   Future<Board> createBoard(Board board) async {
+    final user = Supabase.instance.client.auth.currentUser;
+    debugPrint('Current user: ${user?.id}');
+    debugPrint('Current session: ${Supabase.instance.client.auth.currentSession?.accessToken}');
+
     try {
       final response = await _supabase.from('boards').insert(board.toJson()).select().single();
       return Board.fromJson(response);

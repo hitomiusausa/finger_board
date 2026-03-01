@@ -17,8 +17,11 @@ import '../../features/board/screens/board_screen.dart';
 
 // ── Auth 変更を GoRouter に通知する ChangeNotifier ──────────
 class _AuthChangeNotifier extends ChangeNotifier {
+  bool isInitialized = false;
+
   _AuthChangeNotifier() {
-    _subscription = supabase.auth.onAuthStateChange.listen((_) {
+    _subscription = supabase.auth.onAuthStateChange.listen((data) {
+      isInitialized = true;
       notifyListeners();
     });
   }
@@ -39,20 +42,39 @@ final routerProvider = Provider<GoRouter>((ref) {
 
   return GoRouter(
     refreshListenable: authNotifier,
-    initialLocation: '/login',
+    initialLocation: '/splash',
     redirect: (context, state) {
-      final isLoggedIn = supabase.auth.currentSession != null;
+      final isInitialized = authNotifier.isInitialized;
       final location = state.matchedLocation;
-      final isAuthRoute = location == '/login' || location == '/signup';
 
-      // 未ログイン → ログイン画面へ
-      if (!isLoggedIn && !isAuthRoute) return '/login';
-      // ログイン済み → ホーム画面へ
-      if (isLoggedIn && isAuthRoute) return '/';
+      // 初期化中は /splash のみ許可
+      if (!isInitialized) {
+        return location == '/splash' ? null : '/splash';
+      }
+
+      final isLoggedIn = supabase.auth.currentSession != null;
+      final isAuthRoute = location == '/login' || location == '/signup';
+      final isSplash = location == '/splash';
+
+      // 未ログイン状態なら、ログイン系画面以外は /login へ
+      if (!isLoggedIn) {
+        return isAuthRoute ? null : '/login';
+      }
+
+      // ログイン済みなら、ログイン系画面やスプラッシュからは / へ
+      if (isAuthRoute || isSplash) {
+        return '/';
+      }
 
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/splash',
+        builder: (_, __) => const Scaffold(
+          body: Center(child: CircularProgressIndicator()),
+        ),
+      ),
       GoRoute(
         path: '/',
         builder: (_, __) => const HomeScreen(),

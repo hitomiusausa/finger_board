@@ -48,8 +48,9 @@ class BoardCanvas extends StatelessWidget {
                     .map((obj) => _DraggableObject(
                           key: ValueKey(obj.id),
                           object: obj,
+                          mode: mode,
                           isDraggable: mode == BoardMode.edit ||
-                              (obj.properties?['studentsModeDragEnabled'] == true),
+                              (mode == BoardMode.study && obj.properties?['studentsModeDragEnabled'] == true),
                           onMoved: onObjectMoved,
                           onSelected: onObjectSelected,
                         ))
@@ -80,6 +81,7 @@ class BoardCanvas extends StatelessWidget {
 // ── ドラッグ可能オブジェクトのラッパー ─────────────────────
 class _DraggableObject extends StatefulWidget {
   final BoardObject object;
+  final BoardMode mode;
   final bool isDraggable;
   final void Function(String id, double x, double y) onMoved;
   final void Function(String? id) onSelected;
@@ -87,6 +89,7 @@ class _DraggableObject extends StatefulWidget {
   const _DraggableObject({
     super.key,
     required this.object,
+    required this.mode,
     required this.isDraggable,
     required this.onMoved,
     required this.onSelected,
@@ -151,7 +154,7 @@ class _DraggableObjectState extends State<_DraggableObject> {
         child: SizedBox(
           width: obj.width * ((obj.properties?['scaleX'] as num?)?.toDouble() ?? 1.0),
           height: obj.height * ((obj.properties?['scaleY'] as num?)?.toDouble() ?? 1.0),
-          child: ObjectWidget(object: obj),
+          child: ObjectWidget(object: obj, mode: widget.mode),
         ),
       ),
     );

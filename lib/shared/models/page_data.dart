@@ -4,6 +4,8 @@
 // AS3 の SavedPageData に対応
 // ─────────────────────────────────────────────────────────────
 
+import 'package:flutter/foundation.dart';
+import 'package:uuid/uuid.dart';
 import '../../features/board/data/models/board_object.dart';
 
 /// ページ設定（旧 pageOptions）
@@ -97,26 +99,59 @@ class PageData {
           json['pageStockObjects'] as Map<String, dynamic>? ?? {},
     );
   }
-
   /// .mun デコーダーの出力（JSON）からPageData を生成
   factory PageData.fromMunJson(Map<String, dynamic> json) {
     final List<BoardObject> objects = [];
     final rawObjs = json['objectsData'];
+    final pageId = json['id'] as String? ?? const Uuid().v4();
+
     if (rawObjs is List) {
       for (final o in rawObjs) {
         if (o is Map<String, dynamic>) {
           try {
-            objects.add(BoardObject.fromJson(o));
-          } catch (_) {}
+            final className = o['className'] ?? o['class_name'] as String?;
+            if (className == null || className == 'AssembleBox' || !['LetterBox', 'ImgBox', 'QuestionBox', 'LineOnBoard'].contains(className)) {
+              debugPrint('Unknown class_name: $className');
+              continue;
+            }
+
+            final w = (o['W'] ?? o['width'] as num?)?.toDouble() ?? 100.0;
+            final h = (o['H'] ?? o['height'] as num?)?.toDouble() ?? 100.0;
+            final x = (o['x'] as num?)?.toDouble() ?? 0.0;
+            final y = (o['y'] as num?)?.toDouble() ?? 0.0;
+
+            final properties = Map<String, dynamic>.from(o);
+            // ログに邪魔な禁止項目を削除
+            properties.remove('rotation');
+            properties.remove('z_index');
+            properties.remove('page_index');
+            properties.remove('board_id');
+            properties.remove('user_id');
+
+            objects.add(BoardObject(
+              id: const Uuid().v4(),
+              pageId: pageId,
+              className: className,
+              x: x,
+              y: y,
+              width: w,
+              height: h,
+              properties: properties,
+            ));
+          } catch (e) {
+            debugPrint('MunParse error: $e');
+          }
         }
       }
     }
 
     return PageData(
-      id: 'page_${DateTime.now().millisecondsSinceEpoch}',
-      pageTitle: json['pageTitle'] as String? ?? '',
+      id: pageId,
+      docId: json['docId'] as String?,
+      pageTitle: json['pageTitle'] as String? ?? 'インポートページ',
       objectsData: objects,
       animationData: json['animationData'] as Map<String, dynamic>? ?? {},
+      masterId: json['masterId'] as String?,
       pageOptions: json['pageOptions'] is Map<String, dynamic>
           ? PageOptions.fromJson(json['pageOptions'] as Map<String, dynamic>)
           : const PageOptions(),

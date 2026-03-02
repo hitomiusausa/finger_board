@@ -9,6 +9,9 @@ import '../data/repositories/board_repository.dart';
 import '../data/repositories/board_object_repository.dart';
 import '../data/models/board.dart';
 import '../data/models/board_page.dart';
+import 'package:file_picker/file_picker.dart';
+import '../providers/mun_import_provider.dart';
+import '../../../shared/services/mun_import_service.dart';
 import '../../../shared/models/page_data.dart';
 
 class BoardScreen extends ConsumerStatefulWidget {
@@ -82,6 +85,32 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
     if (_isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
+
+    ref.listen<AsyncValue<MunImportResult?>>(munImportProvider, (previous, next) {
+      if (next is AsyncData && next.value != null) {
+        final result = next.value!;
+        if (result.success) {
+          ref.read(boardProvider(_boardId).notifier).setLoadedPages(result.pages);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('インポート完了しました')),
+            );
+          }
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(result.errorMessage ?? 'インポートエラー')),
+            );
+          }
+        }
+      } else if (next is AsyncError) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('インポート例外: ${next.error}')),
+          );
+        }
+      }
+    });
 
     final boardState = ref.watch(boardProvider(_boardId));
     final page = boardState.currentPage;
@@ -405,7 +434,27 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
   }
 
   Future<void> _pickAndImportFile() async {
-     // placeholder
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['mun', 'json'],
+        withData: true,
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
+        if (file.bytes != null) {
+          ref.read(munImportProvider.notifier).importFromBytes(file.bytes!, file.name);
+        }
+      }
+    } catch (e) {
+      debugPrint('File picker error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('ファイル選択エラー: $e')),
+        );
+      }
+    }
   }
 
   Widget _buildPageTabBar(BoardState boardState) {

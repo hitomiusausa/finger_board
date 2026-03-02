@@ -159,26 +159,26 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
         ),
         TextButton.icon(
           onPressed: () => _save(),
-          icon: const Icon(Icons.save, color: Colors.white),
-          label: const Text('保存', style: TextStyle(color: Colors.white)),
+          icon: const Icon(Icons.save),
+          label: const Text('保存'),
         ),
         TextButton.icon(
           onPressed: () => ref.read(boardProvider(_boardId).notifier).changeMode(BoardMode.present),
-          icon: const Icon(Icons.slideshow, color: Colors.white),
-          label: const Text('提示', style: TextStyle(color: Colors.white)),
+          icon: const Icon(Icons.slideshow),
+          label: const Text('提示'),
         ),
         TextButton.icon(
           onPressed: () => ref.read(boardProvider(_boardId).notifier).changeMode(BoardMode.study),
-          icon: const Icon(Icons.school, color: Colors.white),
-          label: const Text('学習', style: TextStyle(color: Colors.white)),
+          icon: const Icon(Icons.school),
+          label: const Text('学習'),
         ),
       ];
     } else {
       return [
         TextButton.icon(
           onPressed: () => ref.read(boardProvider(_boardId).notifier).changeMode(BoardMode.edit),
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          label: const Text('編集に戻る', style: TextStyle(color: Colors.white)),
+          icon: const Icon(Icons.arrow_back),
+          label: const Text('編集に戻る'),
         ),
       ];
     }
@@ -415,63 +415,68 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
     return Container(
       height: 80,
       color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
-      child: Row(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: pages.length,
-              itemBuilder: (context, index) {
-                final isSelected = index == currentIndex;
-                return GestureDetector(
-                  onTap: () {
-                    ref.read(boardProvider(_boardId).notifier).switchPage(index);
-                  },
-                  child: Container(
-                    width: 100,
-                    margin: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: isSelected ? Theme.of(context).primaryColor : Colors.white,
-                      border: Border.all(
-                        color: isSelected ? Theme.of(context).primaryColorDark : Colors.grey,
-                        width: 2,
-                      ),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      'ページ ${index + 1}',
-                      style: TextStyle(
-                        color: isSelected ? Colors.white : Colors.black,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                      ),
-                    ),
-                  ),
-                );
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.only(right: 80), // FABで隠れないようにパディングを追加
+        itemCount: pages.length + 1,
+        itemBuilder: (context, index) {
+          if (index == pages.length) {
+            // 追加ボタン
+            return GestureDetector(
+              onTap: () async {
+                try {
+                  // INSERT into board_pages
+                  final newPageId = const Uuid().v4();
+                  await BoardRepository().createBoardPage(BoardPage(
+                     id: newPageId,
+                     boardId: _boardId,
+                     pageIndex: pages.length,
+                  ));
+                  ref.read(boardProvider(_boardId).notifier).addPage(newPageId);
+                } catch (e) {
+                   debugPrint('add page error $e');
+                }
               },
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.add_circle, size: 36),
-            onPressed: () async {
-              try {
-                // INSERT into board_pages
-                final newPageId = const Uuid().v4();
-                await BoardRepository().createBoardPage(BoardPage(
-                   id: newPageId,
-                   boardId: _boardId,
-                   pageIndex: pages.length,
-                ));
-                ref.read(boardProvider(_boardId).notifier).addPage(newPageId);
-              } catch (e) {
-                 debugPrint('add page error $e');
-              }
+              child: Container(
+                width: 60,
+                margin: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border.all(color: Colors.grey, width: 2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                alignment: Alignment.center,
+                child: const Icon(Icons.add, color: Colors.grey, size: 36),
+              ),
+            );
+          }
+          final isSelected = index == currentIndex;
+          return GestureDetector(
+            onTap: () {
+              ref.read(boardProvider(_boardId).notifier).switchPage(index);
             },
-            tooltip: 'ページ追加',
-            color: Theme.of(context).primaryColor,
-          ),
-          const SizedBox(width: 8),
-        ],
+            child: Container(
+              width: 100,
+              margin: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: isSelected ? Theme.of(context).primaryColor : Colors.white,
+                border: Border.all(
+                  color: isSelected ? Theme.of(context).primaryColorDark : Colors.grey,
+                  width: 2,
+                ),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                'ページ ${index + 1}',
+                style: TextStyle(
+                  color: isSelected ? Colors.white : Colors.black,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
